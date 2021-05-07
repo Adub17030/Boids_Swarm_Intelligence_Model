@@ -8,7 +8,6 @@ class Boid {
         this.maxSpeed = 5;
     }
 
-    // Function that adjusts for edge events
     edges() {
         if (this.position.x > width) {
             this.position.x = 0;
@@ -22,9 +21,35 @@ class Boid {
         }
     }
 
+    obstacle(hazard, mode) {
+        if (hazard) {
+            let perceptionRadius = 75;
+
+            let d = dist(
+                this.position.x,
+                this.position.y,
+                hazard[0] + hazard[2] / 2,
+                hazard[1] + hazard[3] / 2
+            );
+
+            if (d < perceptionRadius) {
+                if (mode === 'Avoid') {
+                    this.velocity.mult(-1);
+                }
+                if (mode === 'Collect') {
+                    this.velocity.mult(0);
+                }
+                if (mode === 'Coverage') {
+                    this.velocity.rotate(Math.PI);
+                    this.velocity.mult(-0.5);
+                }
+            }
+        }
+    }
+
     align(boids) {
         let perceptionRadius = 25;
-        let steering = createVector();
+        let steer = createVector();
         let total = 0;
         for (let other of boids) {
             let d = dist(
@@ -34,22 +59,22 @@ class Boid {
                 other.position.y
             );
             if (other != this && d < perceptionRadius) {
-                steering.add(other.velocity);
+                steer.add(other.velocity);
                 total++;
             }
         }
         if (total > 0) {
-            steering.div(total);
-            steering.setMag(this.maxSpeed);
-            steering.sub(this.velocity);
-            steering.limit(this.maxForce);
+            steer.div(total);
+            steer.setMag(this.maxSpeed);
+            steer.sub(this.velocity);
+            steer.limit(this.maxForce);
         }
-        return steering;
+        return steer;
     }
 
     separation(boids) {
         let perceptionRadius = 24;
-        let steering = createVector();
+        let steer = createVector();
         let total = 0;
         for (let other of boids) {
             let d = dist(
@@ -61,22 +86,22 @@ class Boid {
             if (other != this && d < perceptionRadius) {
                 let diff = p5.Vector.sub(this.position, other.position);
                 diff.div(d * d);
-                steering.add(diff);
+                steer.add(diff);
                 total++;
             }
         }
         if (total > 0) {
-            steering.div(total);
-            steering.setMag(this.maxSpeed);
-            steering.sub(this.velocity);
-            steering.limit(this.maxForce);
+            steer.div(total);
+            steer.setMag(this.maxSpeed);
+            steer.sub(this.velocity);
+            steer.limit(this.maxForce);
         }
-        return steering;
+        return steer;
     }
 
     cohesion(boids) {
         let perceptionRadius = 50;
-        let steering = createVector();
+        let steer = createVector();
         let total = 0;
         for (let other of boids) {
             let d = dist(
@@ -86,25 +111,27 @@ class Boid {
                 other.position.y
             );
             if (other != this && d < perceptionRadius) {
-                steering.add(other.position);
+                steer.add(other.position);
                 total++;
             }
         }
         if (total > 0) {
-            steering.div(total);
-            steering.sub(this.position);
-            steering.setMag(this.maxSpeed);
-            steering.sub(this.velocity);
-            steering.limit(this.maxForce);
+            steer.div(total);
+            steer.sub(this.position);
+            steer.setMag(this.maxSpeed);
+            steer.sub(this.velocity);
+            steer.limit(this.maxForce);
         }
-        return steering;
+        return steer;
     }
 
-    flock(boids) {
+    flock(boids, hazard, mode = 'none') {
         let alignment = this.align(boids);
         let cohesion = this.cohesion(boids);
         let separation = this.separation(boids);
-
+        if (hazard) {
+            this.obstacle(hazard, mode);
+        }
         alignment.mult(alignSlider.value());
         cohesion.mult(cohesionSlider.value());
         separation.mult(separationSlider.value());
@@ -123,7 +150,7 @@ class Boid {
 
     show() {
         strokeWeight(6);
-        stroke('white');
+        stroke('orange');
         point(this.position.x, this.position.y);
     }
 }
